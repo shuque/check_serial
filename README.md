@@ -3,13 +3,22 @@ Check DNS zone serial numbers
 
 Given a DNS zone name, this script queries all the authoritative
 servers for the zone for their SOA record, and prints a line for
-each one with their SOA serial#. This provides a quick way to
-visually scan the output to determine if the serial numbers are in
-sync or not, and if not, by how much.
+each one with their SOA serial#, hostname, and IP address.
+
+This provides a quick way to visually scan the output to determine
+if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
-or to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers.
+to restrict the queries to only the IPv4 or IPv6 addresses of the
+servers, to specify the allowed drift, and to specify the number of
+query retries for each server.
+
+The exit status:
+
+  0  If serial numbers for every server are identical or do not
+     differ by more than ALLOWED_DRIFT (default 0)
+  1  If serial numbers for some servers differ by more than ALLOWED_DRIFT
+  2  If some servers failed to respond.
 
 Author: Shumon Huque <shuque@gmail.com>
 
@@ -22,6 +31,7 @@ Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default 5)
+       -d N        Allowed SOA serial number drift (default 0)
        -a ns1,..   Specify additional nameserver names/addresses to query
 
 

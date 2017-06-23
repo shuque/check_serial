@@ -6,18 +6,22 @@ check_serial.py
 
 Given a DNS zone name, this script queries all the authoritative
 servers for the zone for their SOA record, and prints a line for
-each one with their SOA serial#, hostname, and IP address. 
+each one with their SOA serial#, hostname, and IP address.
 
-This provides a quick way to visually scan the output to determine 
-if the serial numbers are in
-sync or not, and if not, by how much.
+This provides a quick way to visually scan the output to determine
+if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
-or to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers.
+to restrict the queries to only the IPv4 or IPv6 addresses of the
+servers, to specify the allowed drift, and to specify the number of
+query retries for each server.
 
-The exit status of the program is 0 if all serial numbers are
-successfully obtained and are identical, and 1 otherwise.
+The exit status:
+
+  0  If serial numbers for every server are identical or do not
+     differ by more than ALLOWED_DRIFT (default 0)
+  1  If serial numbers for some servers differ by more than ALLOWED_DRIFT
+  2  If some servers failed to respond.
 
 Author: Shumon Huque <shuque@gmail.com>
 
@@ -34,6 +38,8 @@ $ ./check_serial.py upenn.edu
      1006027689 dns2.udel.edu. 128.175.13.17
      1006027689 sns-pb.isc.org. 2001:500:2e::1
      1006027689 sns-pb.isc.org. 192.5.4.1
+$ echo $?
+0
 
 """
 
@@ -42,8 +48,11 @@ import dns.resolver
 import dns.message, dns.query, dns.rdatatype, dns.rcode
 import getopt
 
-TIMEOUT = 10
-RETRIES = 5
+TIMEOUT = 5                            # Timeout for each SOA query
+RETRIES = 5                            # Max #SOA queries to try per server
+ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
+                                       # before we set an error flag.
+
 AF_DEFAULT = socket.AF_UNSPEC          # v4=AF_INET, v6=AF_INET6
 AF_TEXT = {
     socket.AF_UNSPEC : "Unspec",
@@ -102,16 +111,17 @@ Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
-       -r N        Maximum # SOA query retries for each server (default 5)
+       -r N        Maximum # SOA query retries for each server (default {})
+       -d N        Allowed SOA serial number drift (default {})
        -a ns1,..   Specify additional nameserver names/addresses to query
-""")
+""".format(RETRIES, ALLOWED_DRIFT))
     sys.exit(1)
 
 
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46r:a:')
+        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:a:')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -127,6 +137,8 @@ if __name__ == '__main__':
             af = socket.AF_INET6
         elif opt == "-r":
             RETRIES = int(optval)
+        elif opt == "-d":
+            ALLOWED_DRIFT = int(optval)
         elif opt == "-a":
             ADDITIONAL = optval.split(',')
 
@@ -134,23 +146,28 @@ if __name__ == '__main__':
     ZONE = args[0]
     answers = dns.resolver.query(ZONE, 'NS', 'IN')
 
-    first = True
-    firstSerial = None
-    rc = 0
+    serialList = []
+    cnt_nsip = 0
+
     nsname_list = sorted(ADDITIONAL + [str(x.target) for x in answers.rrset])
     for nsname in nsname_list:
         nsip_list = get_ip(nsname, af)
         for nsip in nsip_list:
+            cnt_nsip += 1
             serial = get_serial(ZONE, nsname, nsip)
-            if serial is None:
-                rc = 1
-            else:
-                if first and rc == 0:
-                    firstSerial = serial
-                    first = False
-                elif rc == 0:
-                    if serial != firstSerial:
-                        rc = 1
+            if serial is not None:
+                serialList.append(serial)
                 print("%15ld %s %s" % (serial, nsname, nsip))
+
+    if cnt_nsip != len(serialList):
+        rc = 2
+    elif serialList.count(serialList[0]) == len(serialList):
+        rc = 0
+    else:
+        serialRange = max(serialList) - min(serialList)
+        if serialRange > ALLOWED_DRIFT:
+            rc = 1
+        else:
+            rc = 0
 
     sys.exit(rc)
