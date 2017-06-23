@@ -63,13 +63,13 @@ def get_serial(zone, nshost, nsip):
     serial = None
     resp = send_query_udp(zone, 'SOA', nsip)
     if resp == None:
-        print "ERROR: No answer from %s %s" % (nshost, nsip)
+        print("ERROR: No answer from %s %s" % (nshost, nsip))
     elif resp.rcode() != 0:
-        print "ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode())
+        print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
     else:
         if len(resp.answer) != 1:
-            print "Error: %s %s: more than 1 answer found for SOA" % \
-                (nshost, nsip)
+            print("Error: %s %s: more than 1 answer found for SOA" % \
+                  (nshost, nsip))
         else:
             soa_rdata = resp.answer[0].items[0]
             serial = soa_rdata.serial
@@ -80,9 +80,9 @@ def get_ip(nsname, af=AF_DEFAULT):
     nsip_list = []
     try:
         ai_list = socket.getaddrinfo(nsname, 53, af, socket.SOCK_DGRAM)
-    except socket.gaierror, diag:
-        print >>sys.stderr, "WARNING: getaddrinfo(%s): %s lookup failed" % \
-            (nsname, AF_TEXT[af])
+    except socket.gaierror:
+        j = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed" % \
+                             (nsname, AF_TEXT[af]))
     else:
         for (family, socktype, proto, canon, sockaddr) in ai_list:
             nsip_list.append(sockaddr[0])
@@ -90,13 +90,13 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 
 def usage():
-    print """\
+    print("""\
 Usage: check_soa [-4] [-6] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -a ns1,..   Specify additional nameserver names to query
-"""
+""")
     sys.exit(1)
 
 
@@ -141,6 +141,6 @@ if __name__ == '__main__':
                 elif rc == 0:
                     if serial != firstSerial:
                         rc = 1
-                print "%15ld %s %s" % (serial, nsname, nsip)
+                print("%15ld %s %s" % (serial, nsname, nsip))
 
     sys.exit(rc)
