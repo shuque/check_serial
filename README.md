@@ -17,22 +17,24 @@ Sample output:
 
 ```
 $ ./check_serial.py
-Usage: check_soa [-4] [-6] [-a ns1,ns2,..] <zone>
+Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
-       -a ns1,..   Specify additional nameserver names to query
+       -r N        Maximum # SOA query retries for each server (default 5)
+       -a ns1,..   Specify additional nameserver names/addresses to query
 
 
 $ ./check_serial.py upenn.edu
-     1006020744 adns3.upenn.edu. 2607:f470:1003::3:c
-     1006020744 adns3.upenn.edu. 128.91.251.33
-     1006020744 adns2.upenn.edu. 2607:f470:1002::2:3
-     1006020744 adns2.upenn.edu. 128.91.254.22
-     1006020744 dns2.udel.edu. 128.175.13.17
-     1006020744 sns-pb.isc.org. 2001:500:2e::1
-     1006020744 sns-pb.isc.org. 192.5.4.1
-     1006020744 adns1.upenn.edu. 2607:f470:1001::1:a
-     1006020744 adns1.upenn.edu. 128.91.3.128
-     1006020744 dns1.udel.edu. 128.175.13.16
+     1006027704 adns1.upenn.edu. 2607:f470:1001::1:a
+     1006027704 adns1.upenn.edu. 128.91.3.128
+     1006027704 adns2.upenn.edu. 2607:f470:1002::2:3
+     1006027704 adns2.upenn.edu. 128.91.254.22
+     1006027704 adns3.upenn.edu. 2607:f470:1003::3:c
+     1006027704 adns3.upenn.edu. 128.91.251.33
+     1006027704 dns1.udel.edu. 128.175.13.16
+     1006027704 dns2.udel.edu. 128.175.13.17
+     1006027704 sns-pb.isc.org. 2001:500:2e::1
+     1006027704 sns-pb.isc.org. 192.5.4.1
+
 ```
