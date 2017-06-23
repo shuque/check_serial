@@ -10,6 +10,9 @@
 # or to restrict the queries to only the IPv4 or IPv6 addresses of the
 # servers.
 #
+# The exit status of the program is 0 if all serial numbers are
+# successfully obtained and are identical, and 1 otherwise.
+#
 # Author: Shumon Huque <shuque@gmail.com>
 #
 # Sample output:
@@ -56,7 +59,8 @@ def send_query_udp(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
     return res
 
 
-def print_soa(zone, nshost, nsip):
+def get_serial(zone, nshost, nsip):
+    serial = None
     resp = send_query_udp(zone, 'SOA', nsip)
     if resp == None:
         print "ERROR: No answer from %s %s" % (nshost, nsip)
@@ -68,8 +72,8 @@ def print_soa(zone, nshost, nsip):
                 (nshost, nsip)
         else:
             soa_rdata = resp.answer[0].items[0]
-            print "%15ld %s %s" % (soa_rdata.serial, nshost, nsip)
-    return
+            serial = soa_rdata.serial
+    return serial
 
 
 def get_ip(nsname, af=AF_DEFAULT):
@@ -119,9 +123,24 @@ if __name__ == '__main__':
 
     ZONE = args[0]
     answers = dns.resolver.query(ZONE, 'NS', 'IN')
-    
-    for nsname in ADDITIONAL + [str(x.target) for x in answers.rrset]:
+
+    first = True
+    firstSerial = None
+    rc = 0
+    nsname_list = sorted(ADDITIONAL + [str(x.target) for x in answers.rrset])
+    for nsname in nsname_list:
         nsip_list = get_ip(nsname, af)
         for nsip in nsip_list:
-            print_soa(ZONE, nsname, nsip)
+            serial = get_serial(ZONE, nsname, nsip)
+            if serial is None:
+                rc = 1
+            else:
+                if first and rc == 0:
+                    firstSerial = serial
+                    first = False
+                elif rc == 0:
+                    if serial != firstSerial:
+                        rc = 1
+                print "%15ld %s %s" % (serial, nsname, nsip)
 
+    sys.exit(rc)
