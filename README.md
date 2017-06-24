@@ -26,7 +26,7 @@ Sample output:
 
 ```
 $ ./check_serial.py
-Usage: check_soa [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
+Usage: check_serial.py [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
