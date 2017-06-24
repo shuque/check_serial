@@ -48,6 +48,7 @@ import dns.resolver
 import dns.message, dns.query, dns.rdatatype, dns.rcode, dns.rdatatype
 import getopt
 
+PROGNAME = os.path.basename(sys.argv[0])
 TIMEOUT = 5                            # Timeout for each SOA query
 RETRIES = 5                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
@@ -108,7 +109,7 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 def usage():
     print("""\
-Usage: check_soa [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
+Usage: {} [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
@@ -116,7 +117,7 @@ Usage: check_soa [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
        -d N        Allowed SOA serial number drift (default {})
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
-""".format(RETRIES, ALLOWED_DRIFT))
+""".format(PROGNAME, RETRIES, ALLOWED_DRIFT))
     sys.exit(1)
 
 
