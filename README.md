@@ -10,8 +10,8 @@ if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
 to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers, to specify the allowed drift, and to specify the number of
-query retries for each server.
+servers, to specify the allowed drift, specify the number of query
+retries for each server, and whether to set the DNSSEC-OK flag.
 
 The exit status:
 
@@ -26,13 +26,14 @@ Sample output:
 
 ```
 $ ./check_serial.py
-Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
+Usage: check_soa [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default 5)
        -d N        Allowed SOA serial number drift (default 0)
        -a ns1,..   Specify additional nameserver names/addresses to query
+       -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
 
 
 $ ./check_serial.py upenn.edu

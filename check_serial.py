@@ -13,8 +13,8 @@ if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
 to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers, to specify the allowed drift, and to specify the number of
-query retries for each server.
+servers, to specify the allowed drift, specify the number of query
+retries for each server, and whether to set the DNSSEC-OK flag.
 
 The exit status:
 
@@ -45,13 +45,14 @@ $ echo $?
 
 import os, sys, socket
 import dns.resolver
-import dns.message, dns.query, dns.rdatatype, dns.rcode
+import dns.message, dns.query, dns.rdatatype, dns.rcode, dns.rdatatype
 import getopt
 
 TIMEOUT = 5                            # Timeout for each SOA query
 RETRIES = 5                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
                                        # before we set an error flag.
+WANT_DNSSEC = False                    # Use -z to make this True
 
 AF_DEFAULT = socket.AF_UNSPEC          # v4=AF_INET, v6=AF_INET6
 AF_TEXT = {
@@ -64,7 +65,7 @@ AF_TEXT = {
 def send_query_udp(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
     gotresponse = False
     res = None
-    msg = dns.message.make_query(qname, qtype)
+    msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     while (not gotresponse and (retries > 0)):
         retries -= 1
         try:
@@ -83,12 +84,12 @@ def get_serial(zone, nshost, nsip):
     elif resp.rcode() != 0:
         print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
     else:
-        if len(resp.answer) != 1:
-            print("Error: %s %s: more than 1 answer found for SOA" % \
-                  (nshost, nsip))
+        for rrset in resp.answer:
+            if rrset.rdtype == dns.rdatatype.SOA:
+                serial = rrset[0].serial
+                break
         else:
-            soa_rdata = resp.answer[0].items[0]
-            serial = soa_rdata.serial
+            print("Error: %s %s: SOA record not found." % (nshost, nsip))
     return serial
 
 
@@ -107,13 +108,14 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 def usage():
     print("""\
-Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
+Usage: check_soa [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
 
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default {})
        -d N        Allowed SOA serial number drift (default {})
        -a ns1,..   Specify additional nameserver names/addresses to query
+       -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
 """.format(RETRIES, ALLOWED_DRIFT))
     sys.exit(1)
 
@@ -121,7 +123,7 @@ Usage: check_soa [-4] [-6] [-r N] [-a ns1,ns2,..] <zone>
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:a:')
+        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:a:z')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -135,6 +137,8 @@ if __name__ == '__main__':
             af = socket.AF_INET
         elif opt == "-6":
             af = socket.AF_INET6
+        elif opt == "-z":
+            WANT_DNSSEC = True
         elif opt == "-r":
             RETRIES = int(optval)
         elif opt == "-d":
