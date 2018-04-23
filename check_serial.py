@@ -45,7 +45,7 @@ $ echo $?
 
 import os, sys, socket
 import dns.resolver
-import dns.message, dns.query, dns.rdatatype, dns.rcode, dns.rdatatype
+import dns.message, dns.query, dns.rdatatype, dns.rcode, dns.rdatatype, dns.flags
 import getopt
 
 PROGNAME = os.path.basename(sys.argv[0])
@@ -63,10 +63,21 @@ AF_TEXT = {
     }
 
 
+def is_authoritative(msg):
+    """Does DNS message have Authoritative Answer (AA) flag set?"""
+    return (msg.flags & dns.flags.AA == dns.flags.AA)
+
+
+def is_truncated(msg):
+    """Does DNS message have truncated (TC) flag set?"""
+    return (msg.flags & dns.flags.TC == dns.flags.TC)
+
+
 def send_query_udp(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
     gotresponse = False
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
+    msg.flags &= ~dns.flags.RD  # set RD=0
     while (not gotresponse and (retries > 0)):
         retries -= 1
         try:
@@ -84,13 +95,17 @@ def get_serial(zone, nshost, nsip):
         print("ERROR: No answer from %s %s" % (nshost, nsip))
     elif resp.rcode() != 0:
         print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
+    elif not is_authoritative(resp):
+        print("ERROR: %s %s answer not authoritative" % (nshost, nsip))
+    elif is_truncated(resp):
+        print("ERROR: %s %s answer is truncated" % (nshost, nsip))
     else:
         for rrset in resp.answer:
             if rrset.rdtype == dns.rdatatype.SOA:
                 serial = rrset[0].serial
                 break
         else:
-            print("Error: %s %s: SOA record not found." % (nshost, nsip))
+            print("ERROR: %s %s: SOA record not found." % (nshost, nsip))
     return serial
 
 
