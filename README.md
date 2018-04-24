@@ -58,6 +58,7 @@ $ ./check_serial.py upenn.edu
 
 $ ./check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
      1002208334 [   MASTER] 10.10.10.11 10.10.10.11
+     1002208333 [        1] 172.17.1.1 172.17.1.1
      1002208234 [      100] ns1.example.com. 10.15.1.1
      1002208234 [      100] ns2.example.com. 10.16.1.1
      1002208334 [        0] ns3.example.com. 10.17.1.1
