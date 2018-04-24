@@ -8,39 +8,7 @@ Given a DNS zone name, this script queries all the authoritative
 servers for the zone for their SOA record, and prints a line for
 each one with their SOA serial#, hostname, and IP address.
 
-This provides a quick way to visually scan the output to determine
-if the serial numbers are in sync or not, and if not, by how much.
-Optional command line arguments can be used to specify additional
-servers to query (e.g. hidden masters, unadvertised secondaries etc),
-to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers, to specify the allowed drift, specify the number of query
-retries for each server, and whether to set the DNSSEC-OK flag.
-
-The exit status:
-
-  0  If serial numbers for every server are identical or do not
-     differ by more than ALLOWED_DRIFT (default 0)
-  1  If serial numbers for some servers differ by more than ALLOWED_DRIFT
-  2  If some servers failed to respond.
-
 Author: Shumon Huque <shuque@gmail.com>
-
-Sample output:
-
-$ ./check_serial.py upenn.edu
-     1006027689 adns1.upenn.edu. 2607:f470:1001::1:a
-     1006027689 adns1.upenn.edu. 128.91.3.128
-     1006027689 adns2.upenn.edu. 2607:f470:1002::2:3
-     1006027689 adns2.upenn.edu. 128.91.254.22
-     1006027689 adns3.upenn.edu. 2607:f470:1003::3:c
-     1006027689 adns3.upenn.edu. 128.91.251.33
-     1006027689 dns1.udel.edu. 128.175.13.16
-     1006027689 dns2.udel.edu. 128.175.13.17
-     1006027689 sns-pb.isc.org. 2001:500:2e::1
-     1006027689 sns-pb.isc.org. 192.5.4.1
-$ echo $?
-0
-
 """
 
 import os, sys, socket
@@ -54,6 +22,7 @@ RETRIES = 5                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
                                        # before we set an error flag.
 WANT_DNSSEC = False                    # Use -z to make this True
+MASTER_IP = None                       # Master server to compare serials with
 
 AF_DEFAULT = socket.AF_UNSPEC          # v4=AF_INET, v6=AF_INET6
 AF_TEXT = {
@@ -109,12 +78,24 @@ def get_serial(zone, nshost, nsip):
     return serial
 
 
+def print_info(serial, serialMaster, nsname, nsip, masterip):
+    if masterip:
+        drift = serialMaster - serial
+        if (nsip == masterip):
+            print("%15ld [%9s] %s %s" % (serial, "MASTER", nsname, nsip))
+        else:
+            print("%15ld [%9d] %s %s" % (serial, drift, nsname, nsip))
+    else:
+        print("%15ld %s %s" % (serial, nsname, nsip))
+    return
+
+
 def get_ip(nsname, af=AF_DEFAULT):
     nsip_list = []
     try:
         ai_list = socket.getaddrinfo(nsname, 53, af, socket.SOCK_DGRAM)
     except socket.gaierror:
-        j = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed" % \
+        _ = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed" % \
                              (nsname, AF_TEXT[af]))
     else:
         for (family, socktype, proto, canon, sockaddr) in ai_list:
@@ -124,12 +105,14 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 def usage():
     print("""\
-Usage: {} [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
+Usage: {} [Options] <zone>
 
+       Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default {})
        -d N        Allowed SOA serial number drift (default {})
+       -m <ip>     Master server address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
 """.format(PROGNAME, RETRIES, ALLOWED_DRIFT))
@@ -139,7 +122,7 @@ Usage: {} [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:a:z')
+        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:m:a:z')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -159,6 +142,8 @@ if __name__ == '__main__':
             RETRIES = int(optval)
         elif opt == "-d":
             ALLOWED_DRIFT = int(optval)
+        elif opt == "-m":
+            MASTER_IP = optval
         elif opt == "-a":
             ADDITIONAL = optval.split(',')
 
@@ -166,10 +151,17 @@ if __name__ == '__main__':
     ZONE = args[0]
     answers = dns.resolver.query(ZONE, 'NS', 'IN')
 
+    serialMaster = None
     serialList = []
     cnt_nsip = 0
 
-    nsname_list = sorted(ADDITIONAL + [str(x.target) for x in answers.rrset])
+    if MASTER_IP:
+        cnt_nsip += 1
+        serialMaster = get_serial(ZONE, MASTER_IP, MASTER_IP)
+        serialList.append(serialMaster)
+        print_info(serialMaster, serialMaster, MASTER_IP, MASTER_IP, MASTER_IP)
+
+    nsname_list = ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
     for nsname in nsname_list:
         nsip_list = get_ip(nsname, af)
         for nsip in nsip_list:
@@ -177,7 +169,7 @@ if __name__ == '__main__':
             serial = get_serial(ZONE, nsname, nsip)
             if serial is not None:
                 serialList.append(serial)
-                print("%15ld %s %s" % (serial, nsname, nsip))
+                print_info(serial, serialMaster, nsname, nsip, MASTER_IP)
 
     if cnt_nsip != len(serialList):
         rc = 2

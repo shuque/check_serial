@@ -9,9 +9,10 @@ This provides a quick way to visually scan the output to determine
 if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
-to restrict the queries to only the IPv4 or IPv6 addresses of the
-servers, to specify the allowed drift, specify the number of query
-retries for each server, and whether to set the DNSSEC-OK flag.
+explicit master server to compare serial numbers with, to restrict the
+queries to only the IPv4 or IPv6 addresses of the servers, to specify
+the allowed drift, specify the number of query retries for each server,
+and whether to set the DNSSEC-OK flag.
 
 The exit status of the program is:
 
@@ -30,12 +31,14 @@ Sample output:
 
 ```
 $ ./check_serial.py
-Usage: check_serial.py [-4] [-6] [-r N] [-d N] [-z] [-a ns1,ns2,..] <zone>
+Usage: check_serial.py [Options] <zone>
 
+       Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default 5)
        -d N        Allowed SOA serial number drift (default 0)
+       -m <ip>     Master server address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
 
@@ -52,4 +55,10 @@ $ ./check_serial.py upenn.edu
      1006027704 sns-pb.isc.org. 2001:500:2e::1
      1006027704 sns-pb.isc.org. 192.5.4.1
 
+
+$ ./check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
+     1002208334 [   MASTER] 10.10.10.11 10.10.10.11
+     1002208234 [      100] ns1.example.com. 10.15.1.1
+     1002208234 [      100] ns2.example.com. 10.16.1.1
+     1002208334 [        0] ns3.example.com. 10.17.1.1
 ```
