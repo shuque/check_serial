@@ -42,24 +42,44 @@ def is_truncated(msg):
     return (msg.flags & dns.flags.TC == dns.flags.TC)
 
 
-def send_query_udp(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
+def send_query_tcp(msg, ip, timeout=TIMEOUT):
+    res = None
+    try:
+        res = dns.query.tcp(msg, ip, timeout=timeout)
+    except dns.exception.Timeout:
+        print("WARN: TCP query timeout for {}".format(ip))
+        pass
+    return res
+
+
+def send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES):
     gotresponse = False
     res = None
-    msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
-    msg.flags &= ~dns.flags.RD  # set RD=0
     while (not gotresponse and (retries > 0)):
         retries -= 1
         try:
             res = dns.query.udp(msg, ip, timeout=timeout)
             gotresponse = True
         except dns.exception.Timeout:
+            print("WARN: UDP query timeout for {}".format(ip))
             pass
+    return res
+
+
+def send_query(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
+    res = None
+    msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
+    msg.flags &= ~dns.flags.RD  # set RD=0
+    res = send_query_udp(msg, ip)
+    if is_truncated(res):
+        print("WARN: response was truncated; retrying with TCP ..")
+        res = send_query_tcp(msg, ip)
     return res
 
 
 def get_serial(zone, nshost, nsip):
     serial = None
-    resp = send_query_udp(zone, 'SOA', nsip)
+    resp = send_query(zone, 'SOA', nsip)
     if resp == None:
         print("ERROR: No answer from %s %s" % (nshost, nsip))
     elif resp.rcode() != 0:
