@@ -71,7 +71,7 @@ def send_query(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
     res = send_query_udp(msg, ip)
-    if is_truncated(res):
+    if res and is_truncated(res):
         print("WARN: response was truncated; retrying with TCP ..")
         res = send_query_tcp(msg, ip)
     return res
