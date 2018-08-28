@@ -22,6 +22,7 @@ RETRIES = 5                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
                                        # before we set an error flag.
 WANT_DNSSEC = False                    # Use -z to make this True
+NO_NSSET = False                       # Query official NS set (-n to negate)
 MASTER_IP = None                       # Master server to compare serials with
 
 AF_DEFAULT = socket.AF_UNSPEC          # v4=AF_INET, v6=AF_INET6
@@ -135,6 +136,7 @@ Usage: {} [Options] <zone>
        -m <ip>     Master server address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
+       -n          Don't query advertised nameservers for the zone
 """.format(PROGNAME, RETRIES, ALLOWED_DRIFT))
     sys.exit(1)
 
@@ -142,7 +144,7 @@ Usage: {} [Options] <zone>
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:m:a:z')
+        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:m:a:zn')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -158,6 +160,8 @@ if __name__ == '__main__':
             af = socket.AF_INET6
         elif opt == "-z":
             WANT_DNSSEC = True
+        elif opt == "-n":
+            NO_NSSET = True
         elif opt == "-r":
             RETRIES = int(optval)
         elif opt == "-d":
@@ -167,9 +171,13 @@ if __name__ == '__main__':
         elif opt == "-a":
             ADDITIONAL = optval.split(',')
 
+    if NO_NSSET and (not ADDITIONAL):
+        print("ERROR: -n requires specifying -a")
+        usage()
 
     ZONE = args[0]
-    answers = dns.resolver.query(ZONE, 'NS', 'IN')
+    if not NO_NSSET:
+        answers = dns.resolver.query(ZONE, 'NS', 'IN')
 
     serialMaster = None
     serialList = []
@@ -181,7 +189,11 @@ if __name__ == '__main__':
         serialList.append(serialMaster)
         print_info(serialMaster, serialMaster, MASTER_IP, MASTER_IP, MASTER_IP)
 
-    nsname_list = ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
+    if NO_NSSET:
+        nsname_list = ADDITIONAL
+    else:
+        nsname_list = ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
+
     for nsname in nsname_list:
         nsip_list = get_ip(nsname, af)
         for nsip in nsip_list:

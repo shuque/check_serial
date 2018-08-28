@@ -30,7 +30,7 @@ Pre-requisites:
 Sample output:
 
 ```
-$ ./check_serial.py
+$ check_serial.py
 Usage: check_serial.py [Options] <zone>
 
        Options:
@@ -41,7 +41,7 @@ Usage: check_serial.py [Options] <zone>
        -m <ip>     Master server address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
-
+       -n          Don't query advertised nameservers for the zone
 
 $ ./check_serial.py upenn.edu
      1006027704 adns1.upenn.edu. 2607:f470:1001::1:a
