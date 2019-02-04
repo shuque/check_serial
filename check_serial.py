@@ -167,7 +167,8 @@ if __name__ == '__main__':
         elif opt == "-d":
             ALLOWED_DRIFT = int(optval)
         elif opt == "-m":
-            MASTER_IP = get_ip(optval, af)[0]
+            MASTER = optval
+            MASTER_IP = get_ip(MASTER, af)[0]
         elif opt == "-a":
             ADDITIONAL = optval.split(',')
 
@@ -185,9 +186,9 @@ if __name__ == '__main__':
 
     if MASTER_IP:
         cnt_nsip += 1
-        serialMaster = get_serial(ZONE, MASTER_IP, MASTER_IP)
+        serialMaster = get_serial(ZONE, MASTER, MASTER_IP)
         serialList.append(serialMaster)
-        print_info(serialMaster, serialMaster, MASTER_IP, MASTER_IP, MASTER_IP)
+        print_info(serialMaster, serialMaster, MASTER, MASTER_IP, MASTER_IP)
 
     if NO_NSSET:
         nsname_list = ADDITIONAL
