@@ -100,9 +100,9 @@ def get_serial(zone, nshost, nsip):
 
 
 def print_info(serial, serialMaster, nsname, nsip, masterip):
-    if serial == None or serialMaster == None:
-        return
     if masterip:
+        if serial == None or serialMaster == None:
+            return
         drift = serialMaster - serial
         if (nsip == masterip):
             print("%15ld [%9s] %s %s" % (serial, "MASTER", nsname, nsip))
