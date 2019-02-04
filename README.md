@@ -38,7 +38,7 @@ Usage: check_serial.py [Options] <zone>
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default 5)
        -d N        Allowed SOA serial number drift (default 0)
-       -m <ip>     Master server address to compare serial numbers with
+       -m ns       Master server name/address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone

@@ -116,7 +116,7 @@ def get_ip(nsname, af=AF_DEFAULT):
     try:
         ai_list = socket.getaddrinfo(nsname, 53, af, socket.SOCK_DGRAM)
     except socket.gaierror:
-        _ = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed" % \
+        _ = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed\n" % \
                              (nsname, AF_TEXT[af]))
     else:
         for (family, socktype, proto, canon, sockaddr) in ai_list:
@@ -133,7 +133,7 @@ Usage: {} [Options] <zone>
        -6          Use IPv6 transport only
        -r N        Maximum # SOA query retries for each server (default {})
        -d N        Allowed SOA serial number drift (default {})
-       -m <ip>     Master server address to compare serial numbers with
+       -m ns       Master server name/address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         elif opt == "-d":
             ALLOWED_DRIFT = int(optval)
         elif opt == "-m":
-            MASTER_IP = optval
+            MASTER_IP = get_ip(optval, af)[0]
         elif opt == "-a":
             ADDITIONAL = optval.split(',')
 
