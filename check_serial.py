@@ -35,12 +35,12 @@ AF_TEXT = {
 
 def is_authoritative(msg):
     """Does DNS message have Authoritative Answer (AA) flag set?"""
-    return (msg.flags & dns.flags.AA == dns.flags.AA)
+    return msg.flags & dns.flags.AA == dns.flags.AA
 
 
 def is_truncated(msg):
     """Does DNS message have truncated (TC) flag set?"""
-    return (msg.flags & dns.flags.TC == dns.flags.TC)
+    return msg.flags & dns.flags.TC == dns.flags.TC
 
 
 def send_query_tcp(msg, ip, timeout=TIMEOUT):
@@ -49,21 +49,19 @@ def send_query_tcp(msg, ip, timeout=TIMEOUT):
         res = dns.query.tcp(msg, ip, timeout=timeout)
     except dns.exception.Timeout:
         print("WARN: TCP query timeout for {}".format(ip))
-        pass
     return res
 
 
 def send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES):
     gotresponse = False
     res = None
-    while (not gotresponse and (retries > 0)):
+    while (not gotresponse) and (retries > 0):
         retries -= 1
         try:
             res = dns.query.udp(msg, ip, timeout=timeout)
             gotresponse = True
         except dns.exception.Timeout:
             print("WARN: UDP query timeout for {}".format(ip))
-            pass
     return res
 
 
@@ -71,17 +69,17 @@ def send_query(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
-    res = send_query_udp(msg, ip)
+    res = send_query_udp(msg, ip, timeout=timeout, retries=retries)
     if res and is_truncated(res):
         print("WARN: response was truncated; retrying with TCP ..")
-        res = send_query_tcp(msg, ip)
+        res = send_query_tcp(msg, ip, timeout=timeout)
     return res
 
 
 def get_serial(zone, nshost, nsip):
     serial = None
     resp = send_query(zone, 'SOA', nsip)
-    if resp == None:
+    if resp is None:
         print("ERROR: No answer from %s %s" % (nshost, nsip))
     elif resp.rcode() != 0:
         print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
@@ -100,8 +98,9 @@ def get_serial(zone, nshost, nsip):
 
 
 def print_info(serial, serialMaster, nsname, nsip, masterip):
+    """Print serial number info for specified zone and server"""
     if masterip:
-        if serial == None or serialMaster == None:
+        if (serial is None) or (serialMaster is None):
             return
         drift = serialMaster - serial
         if (nsip == masterip):
@@ -121,7 +120,7 @@ def get_ip(nsname, af=AF_DEFAULT):
         _ = sys.stderr.write("WARNING: getaddrinfo(%s): %s failed\n" % \
                              (nsname, AF_TEXT[af]))
     else:
-        for (family, socktype, proto, canon, sockaddr) in ai_list:
+        for (_, _, _, _, sockaddr) in ai_list:
             nsip_list.append(sockaddr[0])
     return nsip_list
 
