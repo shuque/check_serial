@@ -65,11 +65,11 @@ def send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES):
     return res
 
 
-def send_query(qname, qtype, ip, timeout=TIMEOUT, retries=RETRIES):
+def send_query(qname, qtype, ip):
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
-    res = send_query_udp(msg, ip, timeout=timeout, retries=retries)
+    res = send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES)
     if res and is_truncated(res):
         print("WARN: response was truncated; retrying with TCP ..")
         res = send_query_tcp(msg, ip, timeout=timeout)
@@ -127,25 +127,26 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 def usage():
     print("""\
-Usage: {} [Options] <zone>
+Usage: {0} [Options] <zone>
 
        Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
-       -r N        Maximum # SOA query retries for each server (default {})
-       -d N        Allowed SOA serial number drift (default {})
+       -t N        Query timeout value (default {1} sec)
+       -r N        Maximum # SOA query retries for each server (default {2})
+       -d N        Allowed SOA serial number drift (default {3})
        -m ns       Master server name/address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
-""".format(PROGNAME, RETRIES, ALLOWED_DRIFT))
+""".format(PROGNAME, TIMEOUT, RETRIES, ALLOWED_DRIFT))
     sys.exit(1)
 
 
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46r:d:m:a:zn')
+        (options, args) = getopt.getopt(sys.argv[1:], '46t:r:d:m:a:zn')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -163,6 +164,8 @@ if __name__ == '__main__':
             WANT_DNSSEC = True
         elif opt == "-n":
             NO_NSSET = True
+        elif opt == "-t":
+            TIMEOUT = int(optval)
         elif opt == "-r":
             RETRIES = int(optval)
         elif opt == "-d":
