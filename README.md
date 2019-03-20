@@ -36,6 +36,7 @@ Usage: check_serial.py [Options] <zone>
        Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
+       -t N        Query timeout value (default 5 sec)
        -r N        Maximum # SOA query retries for each server (default 5)
        -d N        Allowed SOA serial number drift (default 0)
        -m ns       Master server name/address to compare serial numbers with
