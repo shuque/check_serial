@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 
 """
@@ -70,20 +70,20 @@ def get_serial(zone, nshost, nsip):
     serial = None
     resp = send_query(zone, 'SOA', nsip)
     if resp is None:
-        print("ERROR: No answer from %s %s" % (nshost, nsip))
+        print("ERROR: No answer from {} {}".format(nshost, nsip))
     elif resp.rcode() != 0:
-        print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
+        print("ERROR: {} {} rcode {}".format(nshost, nsip, resp.rcode()))
     elif not (resp.flags & dns.flags.AA):
-        print("ERROR: %s %s answer not authoritative" % (nshost, nsip))
+        print("ERROR: {} {} answer not authoritative".format(nshost, nsip))
     elif (resp.flags & dns.flags.TC):
-        print("ERROR: %s %s answer is truncated" % (nshost, nsip))
+        print("ERROR: {} {} answer is truncated".format(nshost, nsip))
     else:
         for rrset in resp.answer:
             if rrset.rdtype == dns.rdatatype.SOA:
                 serial = rrset[0].serial
                 break
         else:
-            print("ERROR: %s %s: SOA record not found." % (nshost, nsip))
+            print("ERROR: {} {}: SOA record not found.".format(nshost, nsip))
     return serial
 
 
@@ -94,11 +94,11 @@ def print_info(serial, serialMaster, nsname, nsip, masterip):
             return
         drift = serialMaster - serial
         if (nsip == masterip):
-            print("%15ld [%9s] %s %s" % (serial, "MASTER", nsname, nsip))
+            print("{:15d} [{:>9s}] {} {}".format(serial, "MASTER", nsname, nsip))
         else:
-            print("%15ld [%9d] %s %s" % (serial, drift, nsname, nsip))
+            print("{:15d} [{:9d}] {} {}".format(serial, drift, nsname, nsip))
     else:
-        print("%15ld %s %s" % (serial, nsname, nsip))
+        print("{:15d} {} {}".format(serial, nsname, nsip))
     return
 
 
