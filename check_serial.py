@@ -33,16 +33,6 @@ AF_TEXT = {
     }
 
 
-def is_authoritative(msg):
-    """Does DNS message have Authoritative Answer (AA) flag set?"""
-    return msg.flags & dns.flags.AA == dns.flags.AA
-
-
-def is_truncated(msg):
-    """Does DNS message have truncated (TC) flag set?"""
-    return msg.flags & dns.flags.TC == dns.flags.TC
-
-
 def send_query_tcp(msg, ip, timeout=TIMEOUT):
     res = None
     try:
@@ -70,7 +60,7 @@ def send_query(qname, qtype, ip):
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
     res = send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES)
-    if res and is_truncated(res):
+    if res and (res.flags & dns.flags.TC):
         print("WARN: response was truncated; retrying with TCP ..")
         res = send_query_tcp(msg, ip, timeout=timeout)
     return res
@@ -83,9 +73,9 @@ def get_serial(zone, nshost, nsip):
         print("ERROR: No answer from %s %s" % (nshost, nsip))
     elif resp.rcode() != 0:
         print("ERROR: %s %s rcode %d" % (nshost, nsip, resp.rcode()))
-    elif not is_authoritative(resp):
+    elif not (resp.flags & dns.flags.AA):
         print("ERROR: %s %s answer not authoritative" % (nshost, nsip))
-    elif is_truncated(resp):
+    elif (resp.flags & dns.flags.TC):
         print("ERROR: %s %s answer is truncated" % (nshost, nsip))
     else:
         for rrset in resp.answer:
