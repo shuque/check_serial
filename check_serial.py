@@ -68,7 +68,11 @@ def send_query(qname, qtype, ip):
 
 def get_serial(zone, nshost, nsip):
     serial = None
-    resp = send_query(zone, 'SOA', nsip)
+    try:
+        resp = send_query(zone, 'SOA', nsip)
+    except socket.error as e:
+        print("ERROR: {} {}: socket: {}".format(nshost, nsip, e))
+        return None
     if resp is None:
         print("ERROR: No answer from {} {}".format(nshost, nsip))
     elif resp.rcode() != 0:
