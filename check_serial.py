@@ -11,10 +11,16 @@ each one with their SOA serial#, hostname, and IP address.
 Author: Shumon Huque <shuque@gmail.com>
 """
 
-import os, sys, socket
-import dns.resolver
-import dns.message, dns.query, dns.rdatatype, dns.rcode, dns.rdatatype, dns.flags
+import os
+import sys
+import socket
 import getopt
+import dns.resolver
+import dns.message
+import dns.query
+import dns.rdatatype
+import dns.rcode
+import dns.flags
 
 PROGNAME = os.path.basename(sys.argv[0])
 TIMEOUT = 5                            # Timeout for each SOA query
@@ -35,6 +41,7 @@ AF_TEXT = {
 
 
 def send_query_tcp(msg, ip, timeout=TIMEOUT):
+    """send DNS query over TCP to given IP address"""
     res = None
     try:
         res = dns.query.tcp(msg, ip, timeout=timeout)
@@ -44,6 +51,7 @@ def send_query_tcp(msg, ip, timeout=TIMEOUT):
 
 
 def send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES):
+    """send DNS query over UDP to given IP address"""
     gotresponse = False
     res = None
     while (not gotresponse) and (retries > 0):
@@ -70,6 +78,7 @@ def send_query(qname, qtype, ip):
 
 
 def get_serial(zone, nshost, nsip):
+    """get serial number of zone from given nameserver ip address"""
     serial = None
     try:
         resp = send_query(zone, 'SOA', nsip)
@@ -80,9 +89,9 @@ def get_serial(zone, nshost, nsip):
         print("ERROR: No answer from {} {}".format(nshost, nsip))
     elif resp.rcode() != 0:
         print("ERROR: {} {} rcode {}".format(nshost, nsip, resp.rcode()))
-    elif not (resp.flags & dns.flags.AA):
+    elif not resp.flags & dns.flags.AA:
         print("ERROR: {} {} answer not authoritative".format(nshost, nsip))
-    elif (resp.flags & dns.flags.TC):
+    elif resp.flags & dns.flags.TC:
         print("ERROR: {} {} answer is truncated".format(nshost, nsip))
     else:
         for rrset in resp.answer:
@@ -100,7 +109,7 @@ def print_info(serial, serialMaster, nsname, nsip, masterip):
         if (serial is None) or (serialMaster is None):
             return
         drift = serialMaster - serial
-        if (nsip == masterip):
+        if nsip == masterip:
             print("{:15d} [{:>9s}] {} {}".format(serial, "MASTER", nsname, nsip))
         else:
             print("{:15d} [{:9d}] {} {}".format(serial, drift, nsname, nsip))
@@ -110,6 +119,7 @@ def print_info(serial, serialMaster, nsname, nsip, masterip):
 
 
 def get_ip(nsname, af=AF_DEFAULT):
+    """obtain list of IP addresses for given nameserver name"""
     nsip_list = []
     try:
         ai_list = socket.getaddrinfo(nsname, 53, af, socket.SOCK_DGRAM)
@@ -123,6 +133,7 @@ def get_ip(nsname, af=AF_DEFAULT):
 
 
 def usage():
+    """Print usage string and terminate program."""
     print("""\
 Usage: {0} [Options] <zone>
 
