@@ -23,8 +23,8 @@ import dns.rcode
 import dns.flags
 
 PROGNAME = os.path.basename(sys.argv[0])
-TIMEOUT = 5                            # Timeout for each SOA query
-RETRIES = 5                            # Max #SOA queries to try per server
+TIMEOUT = 3                            # Timeout for each SOA query
+RETRIES = 3                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
                                        # before we set an error flag.
 USE_TCP = False                        # Use TCP (-c to set to True)
@@ -65,6 +65,7 @@ def send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES):
 
 
 def send_query(qname, qtype, ip):
+    """send DNS query to given IP address"""
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
