@@ -36,6 +36,7 @@ Usage: check_serial.py [Options] <zone>
        Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
+       -c          Use TCP for queries (default: UDP with TCP on truncation)
        -t N        Query timeout value (default 5 sec)
        -r N        Maximum # SOA query retries for each server (default 5)
        -d N        Allowed SOA serial number drift (default 0)
@@ -44,7 +45,7 @@ Usage: check_serial.py [Options] <zone>
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
 
-$ ./check_serial.py upenn.edu
+$ check_serial.py upenn.edu
      1006027704 adns1.upenn.edu. 2607:f470:1001::1:a
      1006027704 adns1.upenn.edu. 128.91.3.128
      1006027704 adns2.upenn.edu. 2607:f470:1002::2:3
@@ -57,7 +58,7 @@ $ ./check_serial.py upenn.edu
      1006027704 sns-pb.isc.org. 192.5.4.1
 
 
-$ ./check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
+$ check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
      1002208334 [   MASTER] 10.10.10.11 10.10.10.11
      1002208333 [        1] 172.17.1.1 172.17.1.1
      1002208234 [      100] ns1.example.com. 10.15.1.1

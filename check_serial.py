@@ -21,6 +21,7 @@ TIMEOUT = 5                            # Timeout for each SOA query
 RETRIES = 5                            # Max #SOA queries to try per server
 ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
                                        # before we set an error flag.
+USE_TCP = False                        # Use TCP (-c to set to True)
 WANT_DNSSEC = False                    # Use -z to make this True
 NO_NSSET = False                       # Query official NS set (-n to negate)
 MASTER_IP = None                       # Master server to compare serials with
@@ -59,10 +60,12 @@ def send_query(qname, qtype, ip):
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
+    if USE_TCP:
+        return send_query_tcp(msg, ip, timeout=TIMEOUT)
     res = send_query_udp(msg, ip, timeout=TIMEOUT, retries=RETRIES)
     if res and (res.flags & dns.flags.TC):
         print("WARN: response was truncated; retrying with TCP ..")
-        res = send_query_tcp(msg, ip, timeout=timeout)
+        return send_query_tcp(msg, ip, timeout=TIMEOUT)
     return res
 
 
@@ -126,6 +129,7 @@ Usage: {0} [Options] <zone>
        Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
+       -c          Use TCP for queries (default: UDP with TCP on truncation)
        -t N        Query timeout value (default {1} sec)
        -r N        Maximum # SOA query retries for each server (default {2})
        -d N        Allowed SOA serial number drift (default {3})
@@ -140,7 +144,7 @@ Usage: {0} [Options] <zone>
 if __name__ == '__main__':
 
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '46t:r:d:m:a:zn')
+        (options, args) = getopt.getopt(sys.argv[1:], '46ct:r:d:m:a:zn')
     except getopt.GetoptError:
         usage()
     if len(args) != 1:
@@ -154,6 +158,8 @@ if __name__ == '__main__':
             af = socket.AF_INET
         elif opt == "-6":
             af = socket.AF_INET6
+        elif opt == "-c":
+            USE_TCP = True
         elif opt == "-z":
             WANT_DNSSEC = True
         elif opt == "-n":
