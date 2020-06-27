@@ -203,6 +203,9 @@ if __name__ == '__main__':
     if MASTER_IP:
         cnt_nsip += 1
         serialMaster = get_serial(ZONE, MASTER, MASTER_IP)
+        if serialMaster is None:
+            print('ERROR: failed to obtain master serial')
+            sys.exit(3)
         serialList.append(serialMaster)
         print_info(serialMaster, serialMaster, MASTER, MASTER_IP, MASTER_IP)
 

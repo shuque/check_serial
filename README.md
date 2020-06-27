@@ -20,6 +20,7 @@ The exit status of the program is:
      differ by more than ALLOWED_DRIFT (default 0)  
   1  If serial numbers for some servers differ by more than ALLOWED_DRIFT  
   2  If some servers failed to respond.  
+  3  If master server (if -m) failed to respond.
 
 Author: Shumon Huque <shuque@gmail.com>
 
