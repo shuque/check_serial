@@ -5,8 +5,6 @@ Given a DNS zone name, this script queries all the authoritative
 servers for the zone for their SOA record, and prints a line for
 each one with their SOA serial#, hostname, and IP address.
 
-This provides a quick way to visually scan the output to determine
-if the serial numbers are in sync or not, and if not, by how much.
 Optional command line arguments can be used to specify additional
 servers to query (e.g. hidden masters, unadvertised secondaries etc),
 explicit master server to compare serial numbers with, to restrict the
@@ -32,6 +30,7 @@ Sample output:
 
 ```
 $ check_serial.py
+check_serial.py version 1.0.0
 Usage: check_serial.py [Options] <zone>
 
        Options:
@@ -57,7 +56,8 @@ $ check_serial.py upenn.edu
      1006027704 dns2.udel.edu. 128.175.13.17
      1006027704 sns-pb.isc.org. 2001:500:2e::1
      1006027704 sns-pb.isc.org. 192.5.4.1
-
+$ echo $?
+0
 
 $ check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
      1002208334 [   MASTER] 10.10.10.11 10.10.10.11
@@ -65,4 +65,6 @@ $ check_serial.py -m 10.10.10.11 -a 172.17.1.1 example.com
      1002208234 [      100] ns1.example.com. 10.15.1.1
      1002208234 [      100] ns2.example.com. 10.16.1.1
      1002208334 [        0] ns3.example.com. 10.17.1.1
+$ echo $?
+1
 ```

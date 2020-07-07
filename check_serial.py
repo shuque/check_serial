@@ -24,29 +24,37 @@ import dns.flags
 
 
 PROGNAME = os.path.basename(sys.argv[0])
-TIMEOUT = 3                            # Timeout for each SOA query
-RETRIES = 3                            # Max #SOA queries to try per server
-ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
-                                       # before we set an error flag.
-USE_TCP = False                        # Use TCP (-c to set to True)
-WANT_DNSSEC = False                    # Use -z to make this True
-NO_NSSET = False                       # Query official NS set (-n to negate)
-MASTER = None                          # Master server name
-MASTER_IP = None                       # Master server to compare serials with
-MASTER_SERIAL = None
-SERIAL_LIST = []
-COUNT_NSIP = 0
-ADDITIONAL = []                        # additional (hidden?) NS names to check
-AF_DEFAULT = socket.AF_UNSPEC          # v4=AF_INET, v6=AF_INET6
+VERSION = "1.0.0"
+
+class Prefs:
+    """Configuration Preferences"""
+    TIMEOUT = 3                            # Timeout for each SOA query
+    RETRIES = 3                            # Max #SOA queries to try per server
+    ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
+    USE_TCP = False                        # Use TCP (-c to set to True)
+    WANT_DNSSEC = False                    # Use -z to make this True
+    NO_NSSET = False                       # Query official NS set (-n to negate)
+    MASTER = None                          # Master server name
+    MASTER_IP = None                       # Master server IP address
+    MASTER_SERIAL = None
+    ADDITIONAL = []                        # additional NS names to check
+    AF = socket.AF_UNSPEC                  # v4=AF_INET, v6=AF_INET6
+
+
+class Stats:
+    """Runtime stats"""
+    SERIAL_LIST = []
+    COUNT_NSIP = 0
+
 
 AF_TEXT = {
     socket.AF_UNSPEC : "Unspec",
     socket.AF_INET : "IPv4",
     socket.AF_INET6 : "IPv6",
-    }
+}
 
 
-def send_query_tcp(msg, ipaddress, timeout=TIMEOUT):
+def send_query_tcp(msg, ipaddress, timeout=Prefs.TIMEOUT):
     """send DNS query over TCP to given IP address"""
     res = None
     try:
@@ -56,7 +64,7 @@ def send_query_tcp(msg, ipaddress, timeout=TIMEOUT):
     return res
 
 
-def send_query_udp(msg, ipaddress, timeout=TIMEOUT, retries=RETRIES):
+def send_query_udp(msg, ipaddress, timeout=Prefs.TIMEOUT, retries=Prefs.RETRIES):
     """send DNS query over UDP to given IP address"""
     gotresponse = False
     res = None
@@ -73,14 +81,15 @@ def send_query_udp(msg, ipaddress, timeout=TIMEOUT, retries=RETRIES):
 def send_query(qname, qtype, ipaddress):
     """send DNS query to given IP address"""
     res = None
-    msg = dns.message.make_query(qname, qtype, want_dnssec=WANT_DNSSEC)
+    msg = dns.message.make_query(qname, qtype, want_dnssec=Prefs.WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
-    if USE_TCP:
-        return send_query_tcp(msg, ipaddress, timeout=TIMEOUT)
-    res = send_query_udp(msg, ipaddress, timeout=TIMEOUT, retries=RETRIES)
+    if Prefs.USE_TCP:
+        return send_query_tcp(msg, ipaddress, timeout=Prefs.TIMEOUT)
+    res = send_query_udp(msg, ipaddress,
+                         timeout=Prefs.TIMEOUT, retries=Prefs.RETRIES)
     if res and (res.flags & dns.flags.TC):
         print("WARN: response was truncated; retrying with TCP ..")
-        return send_query_tcp(msg, ipaddress, timeout=TIMEOUT)
+        return send_query_tcp(msg, ipaddress, timeout=Prefs.TIMEOUT)
     return res
 
 
@@ -125,7 +134,7 @@ def print_info(serial, master_serial, nsname, nsip, masterip):
     return
 
 
-def get_ip(nsname, address_family=AF_DEFAULT):
+def get_ip(nsname, address_family=Prefs.AF):
     """obtain list of IP addresses for given nameserver name"""
     nsip_list = []
     try:
@@ -140,112 +149,128 @@ def get_ip(nsname, address_family=AF_DEFAULT):
     return nsip_list
 
 
-def check_all_ns(nsname_list, serial_list, address_family):
+def check_all_ns(zone, nsname_list):
     """
     Check all nameserver serials and print information about them.
     Returns the number nameserver IP addresses and the list of
     observed serial numbers.
     """
 
-    count_nsip = 0
-
     for nsname in nsname_list:
-        nsip_list = get_ip(nsname, address_family)
+        nsip_list = get_ip(nsname, Prefs.AF)
         for nsip in nsip_list:
-            count_nsip += 1
-            serial = get_serial(ZONE, nsname, nsip)
+            Stats.COUNT_NSIP += 1
+            serial = get_serial(zone, nsname, nsip)
             if serial is not None:
-                serial_list.append(serial)
-                print_info(serial, MASTER_SERIAL, nsname, nsip, MASTER_IP)
+                Stats.SERIAL_LIST.append(serial)
+                print_info(serial, Prefs.MASTER_SERIAL, nsname, nsip,
+                           Prefs.MASTER_IP)
+    return
 
-    return count_nsip
+
+def check_master(zone):
+    """Check master for zone"""
+
+    if Prefs.MASTER:
+        Prefs.MASTER_IP = get_ip(Prefs.MASTER, Prefs.AF)[0]
+        Stats.COUNT_NSIP += 1
+        Prefs.MASTER_SERIAL = get_serial(zone, Prefs.MASTER, Prefs.MASTER_IP)
+        if Prefs.MASTER_SERIAL is None:
+            print('ERROR: failed to obtain master serial')
+            sys.exit(3)
+        Stats.SERIAL_LIST.append(Prefs.MASTER_SERIAL)
+        print_info(Prefs.MASTER_SERIAL, Prefs.MASTER_SERIAL,
+                   Prefs.MASTER, Prefs.MASTER_IP, Prefs.MASTER_IP)
+    return
+
+
+def get_nsnames(zone):
+    """Get list of nameservers names to query"""
+
+    if Prefs.NO_NSSET:
+        if not Prefs.ADDITIONAL:
+            print("ERROR: -n requires specifying -a")
+            usage()
+        return Prefs.ADDITIONAL
+    else:
+        answers = dns.resolver.query(zone, 'NS', 'IN')
+        return Prefs.ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
+
+
+def get_exit_code():
+    """Calculate exit code"""
+
+    if Stats.COUNT_NSIP != len(Stats.SERIAL_LIST):
+        return 2
+    if Stats.SERIAL_LIST.count(Stats.SERIAL_LIST[0]) == len(Stats.SERIAL_LIST):
+        return 0
+    serial_range = max(Stats.SERIAL_LIST) - min(Stats.SERIAL_LIST)
+    if serial_range > Prefs.ALLOWED_DRIFT:
+        return 1
+    return 0
+
+
+def process_args(arg_vector):
+    """Process command line options and arguments"""
+
+    try:
+        (options, args) = getopt.getopt(arg_vector, '46ct:r:d:m:a:zn')
+    except getopt.GetoptError:
+        usage()
+
+    if len(args) != 1:
+        usage()
+
+    for (opt, optval) in options:
+        if opt == "-4":
+            Prefs.AF = socket.AF_INET
+        elif opt == "-6":
+            Prefs.AF = socket.AF_INET6
+        elif opt == "-c":
+            Prefs.USE_TCP = True
+        elif opt == "-z":
+            Prefs.WANT_DNSSEC = True
+        elif opt == "-n":
+            Prefs.NO_NSSET = True
+        elif opt == "-t":
+            Prefs.TIMEOUT = int(optval)
+        elif opt == "-r":
+            Prefs.RETRIES = int(optval)
+        elif opt == "-d":
+            Prefs.ALLOWED_DRIFT = int(optval)
+        elif opt == "-m":
+            Prefs.MASTER = optval
+        elif opt == "-a":
+            Prefs.ADDITIONAL = optval.split(',')
+
+    return args[0]
 
 
 def usage():
     """Print usage string and terminate program."""
     print("""\
+{0} version {1}
 Usage: {0} [Options] <zone>
 
        Options:
        -4          Use IPv4 transport only
        -6          Use IPv6 transport only
        -c          Use TCP for queries (default: UDP with TCP on truncation)
-       -t N        Query timeout value (default {1} sec)
-       -r N        Maximum # SOA query retries for each server (default {2})
-       -d N        Allowed SOA serial number drift (default {3})
+       -t N        Query timeout value (default {2} sec)
+       -r N        Maximum # SOA query retries for each server (default {3})
+       -d N        Allowed SOA serial number drift (default {4})
        -m ns       Master server name/address to compare serial numbers with
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
-""".format(PROGNAME, TIMEOUT, RETRIES, ALLOWED_DRIFT))
+""".format(PROGNAME, VERSION, Prefs.TIMEOUT, Prefs.RETRIES, Prefs.ALLOWED_DRIFT))
     sys.exit(1)
 
 
 if __name__ == '__main__':
 
-    try:
-        (OPTIONS, ARGS) = getopt.getopt(sys.argv[1:], '46ct:r:d:m:a:zn')
-    except getopt.GetoptError:
-        usage()
-    if len(ARGS) != 1:
-        usage()
-
-    AF = AF_DEFAULT
-    for (opt, optval) in OPTIONS:
-        if opt == "-4":
-            AF = socket.AF_INET
-        elif opt == "-6":
-            AF = socket.AF_INET6
-        elif opt == "-c":
-            USE_TCP = True
-        elif opt == "-z":
-            WANT_DNSSEC = True
-        elif opt == "-n":
-            NO_NSSET = True
-        elif opt == "-t":
-            TIMEOUT = int(optval)
-        elif opt == "-r":
-            RETRIES = int(optval)
-        elif opt == "-d":
-            ALLOWED_DRIFT = int(optval)
-        elif opt == "-m":
-            MASTER = optval
-        elif opt == "-a":
-            ADDITIONAL = optval.split(',')
-
-    ZONE = ARGS[0]
-
-    if NO_NSSET:
-        if not ADDITIONAL:
-            print("ERROR: -n requires specifying -a")
-            usage()
-        else:
-            NSNAME_LIST = ADDITIONAL
-    else:
-        ANSWERS = dns.resolver.query(ZONE, 'NS', 'IN')
-        NSNAME_LIST = ADDITIONAL + sorted([str(x.target) for x in ANSWERS.rrset])
-
-    if MASTER:
-        MASTER_IP = get_ip(MASTER, AF)[0]
-        COUNT_NSIP += 1
-        MASTER_SERIAL = get_serial(ZONE, MASTER, MASTER_IP)
-        if MASTER_SERIAL is None:
-            print('ERROR: failed to obtain master serial')
-            sys.exit(3)
-        SERIAL_LIST.append(MASTER_SERIAL)
-        print_info(MASTER_SERIAL, MASTER_SERIAL, MASTER, MASTER_IP, MASTER_IP)
-
-    COUNT_NSIP += check_all_ns(NSNAME_LIST, SERIAL_LIST, AF)
-
-    if COUNT_NSIP != len(SERIAL_LIST):
-        RC = 2
-    elif SERIAL_LIST.count(SERIAL_LIST[0]) == len(SERIAL_LIST):
-        RC = 0
-    else:
-        SERIALRANGE = max(SERIAL_LIST) - min(SERIAL_LIST)
-        if SERIALRANGE > ALLOWED_DRIFT:
-            RC = 1
-        else:
-            RC = 0
-
-    sys.exit(RC)
+    ZONE = process_args(sys.argv[1:])
+    NSNAME_LIST = get_nsnames(ZONE)
+    check_master(ZONE)
+    check_all_ns(ZONE, NSNAME_LIST)
+    sys.exit(get_exit_code())
