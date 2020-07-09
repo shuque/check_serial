@@ -264,7 +264,7 @@ Usage: {0} [Options] <zone>
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
 """.format(PROGNAME, VERSION, Prefs.TIMEOUT, Prefs.RETRIES, Prefs.ALLOWED_DRIFT))
-    sys.exit(1)
+    sys.exit(4)
 
 
 if __name__ == '__main__':
