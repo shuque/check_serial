@@ -24,21 +24,21 @@ import dns.flags
 
 
 PROGNAME = os.path.basename(sys.argv[0])
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 class Prefs:
     """Configuration Preferences"""
-    TIMEOUT = 3                            # Timeout for each SOA query
-    RETRIES = 3                            # Max #SOA queries to try per server
-    ALLOWED_DRIFT = 0                      # Allowed difference in serial numbers
-    USE_TCP = False                        # Use TCP (-c to set to True)
-    WANT_DNSSEC = False                    # Use -z to make this True
-    NO_NSSET = False                       # Query official NS set (-n to negate)
-    MASTER = None                          # Master server name
-    MASTER_IP = None                       # Master server IP address
+    TIMEOUT = 3                         # Timeout for each SOA query
+    RETRIES = 3                         # Max #SOA queries to try per server
+    ALLOWED_DRIFT = 0                   # Allowed difference in serial numbers
+    USE_TCP = False                     # Use TCP (-c to set to True)
+    WANT_DNSSEC = False                 # Use -z to make this True
+    NO_NSSET = False                    # Query official NS set (-n to negate)
+    MASTER = None                       # Master server name
+    MASTER_IP = None                    # Master server IP address
     MASTER_SERIAL = None
-    ADDITIONAL = []                        # additional NS names to check
-    AF = socket.AF_UNSPEC                  # v4=AF_INET, v6=AF_INET6
+    ADDITIONAL = []                     # additional NS names to check
+    AF = socket.AF_UNSPEC               # v4=AF_INET, v6=AF_INET6
 
 
 class Stats:
@@ -165,7 +165,6 @@ def check_all_ns(zone, nsname_list):
                 Stats.SERIAL_LIST.append(serial)
                 print_info(serial, Prefs.MASTER_SERIAL, nsname, nsip,
                            Prefs.MASTER_IP)
-    return
 
 
 def check_master(zone):
@@ -181,7 +180,6 @@ def check_master(zone):
         Stats.SERIAL_LIST.append(Prefs.MASTER_SERIAL)
         print_info(Prefs.MASTER_SERIAL, Prefs.MASTER_SERIAL,
                    Prefs.MASTER, Prefs.MASTER_IP, Prefs.MASTER_IP)
-    return
 
 
 def get_nsnames(zone):
@@ -192,9 +190,9 @@ def get_nsnames(zone):
             print("ERROR: -n requires specifying -a")
             usage()
         return Prefs.ADDITIONAL
-    else:
-        answers = dns.resolver.query(zone, 'NS', 'IN')
-        return Prefs.ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
+
+    answers = dns.resolver.resolve(zone, 'NS', 'IN')
+    return Prefs.ADDITIONAL + sorted([str(x.target) for x in answers.rrset])
 
 
 def get_exit_code():
