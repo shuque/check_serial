@@ -31,7 +31,7 @@ Sample output:
 
 ```
 $ check_serial.py
-check_serial.py version 1.0.0
+check_serial.py version 1.1.0
 Usage: check_serial.py [Options] <zone>
 
        Options:
