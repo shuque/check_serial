@@ -119,18 +119,18 @@ def get_serial(zone, nshost, nsip):
     return serial
 
 
-def print_info(serial, master_serial, nsname, nsip, masterip):
+def print_info(serial, master_serial, nsname, nsip, masterip, nsid):
     """Print serial number info for specified zone and server"""
     if masterip:
         if (serial is None) or (master_serial is None):
             return
         drift = master_serial - serial
         if nsip == masterip:
-            print("{:15d} [{:>9s}] {} {}".format(serial, "MASTER", nsname, nsip))
+            print("{:15d} [{:>9s}] {} {} {}".format(serial, "MASTER", nsname, nsip, nsid))
         else:
-            print("{:15d} [{:9d}] {} {}".format(serial, drift, nsname, nsip))
+            print("{:15d} [{:9d}] {} {} {}".format(serial, drift, nsname, nsip, nsid))
     else:
-        print("{:15d} {} {}".format(serial, nsname, nsip))
+        print("{:15d} {} {} {}".format(serial, nsname, nsip, nsid))
     return
 
 
@@ -161,10 +161,23 @@ def check_all_ns(zone, nsname_list):
         for nsip in nsip_list:
             Stats.COUNT_NSIP += 1
             serial = get_serial(zone, nsname, nsip)
+            nsid = check_nsid(zone, nsip)
+
             if serial is not None:
                 Stats.SERIAL_LIST.append(serial)
                 print_info(serial, Prefs.MASTER_SERIAL, nsname, nsip,
-                           Prefs.MASTER_IP)
+                           Prefs.MASTER_IP, nsid)
+
+
+def check_nsid(zone, nsip):
+    q = dns.message.make_query(zone, 'SOA')
+    q.use_edns(payload=4096, options=[dns.edns.GenericOption(dns.edns.NSID, '')])
+    response = dns.query.udp(q, nsip)
+
+    for opt in response.options:
+        if opt.otype == dns.edns.NSID:
+            return opt.to_text().split(' ')[1]
+    return "No_NSID"
 
 
 def check_master(zone):
@@ -178,8 +191,11 @@ def check_master(zone):
             print('ERROR: failed to obtain master serial')
             sys.exit(3)
         Stats.SERIAL_LIST.append(Prefs.MASTER_SERIAL)
+
+        nsid = check_nsid(zone, Prefs.MASTER_IP)
+
         print_info(Prefs.MASTER_SERIAL, Prefs.MASTER_SERIAL,
-                   Prefs.MASTER, Prefs.MASTER_IP, Prefs.MASTER_IP)
+                   Prefs.MASTER, Prefs.MASTER_IP, Prefs.MASTER_IP, nsid)
 
 
 def get_nsnames(zone):
