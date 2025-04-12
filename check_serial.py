@@ -39,6 +39,7 @@ class Prefs:
     MASTER_SERIAL = None
     ADDITIONAL = []                     # additional NS names to check
     AF = socket.AF_UNSPEC               # v4=AF_INET, v6=AF_INET6
+    NSID = False                        # query for, and print, EDNS0(NSID)
 
 
 class Stats:
@@ -83,6 +84,8 @@ def send_query(qname, qtype, ipaddress):
     res = None
     msg = dns.message.make_query(qname, qtype, want_dnssec=Prefs.WANT_DNSSEC)
     msg.flags &= ~dns.flags.RD  # set RD=0
+    if Prefs.NSID:
+        msg.use_edns(options=[dns.edns.GenericOption(dns.edns.NSID, b'')])
     if Prefs.USE_TCP:
         return send_query_tcp(msg, ipaddress, timeout=Prefs.TIMEOUT)
     res = send_query_udp(msg, ipaddress,
@@ -96,6 +99,7 @@ def send_query(qname, qtype, ipaddress):
 def get_serial(zone, nshost, nsip):
     """get serial number of zone from given nameserver ip address"""
     serial = None
+    nsid = None
     try:
         resp = send_query(zone, 'SOA', nsip)
     except socket.error as e_info:
@@ -116,21 +120,32 @@ def get_serial(zone, nshost, nsip):
                 break
         else:
             print("ERROR: {} {}: SOA record not found.".format(nshost, nsip))
-    return serial
+    if Prefs.NSID:
+        for opt in resp.options:
+            if opt.otype == dns.edns.NSID:
+                nsid = opt.nsid
+    return serial, nsid
 
 
-def print_info(serial, master_serial, nsname, nsip, masterip):
+def print_info(serial, master_serial, nsname, nsid, nsip, masterip):
     """Print serial number info for specified zone and server"""
+    if Prefs.NSID:
+        if nsid:
+            nsid = "(" + nsid.decode("utf-8") + ") "
+        else:
+            nsid = "() "
+    else:
+        nsid = ""
     if masterip:
         if (serial is None) or (master_serial is None):
             return
         drift = master_serial - serial
         if nsip == masterip:
-            print("{:15d} [{:>9s}] {} {}".format(serial, "MASTER", nsname, nsip))
+            print("{:15d} [{:>9s}] {} {:s}{}".format(serial, "MASTER", nsname, nsid, nsip))
         else:
-            print("{:15d} [{:9d}] {} {}".format(serial, drift, nsname, nsip))
+            print("{:15d} [{:9d}] {} {:s}{}".format(serial, drift, nsname, nsid, nsip))
     else:
-        print("{:15d} {} {}".format(serial, nsname, nsip))
+        print("{:15d} {} {:s}{}".format(serial, nsname, nsid, nsip))
     return
 
 
@@ -160,10 +175,10 @@ def check_all_ns(zone, nsname_list):
         nsip_list = get_ip(nsname, Prefs.AF)
         for nsip in nsip_list:
             Stats.COUNT_NSIP += 1
-            serial = get_serial(zone, nsname, nsip)
+            serial, nsid = get_serial(zone, nsname, nsip)
             if serial is not None:
                 Stats.SERIAL_LIST.append(serial)
-                print_info(serial, Prefs.MASTER_SERIAL, nsname, nsip,
+                print_info(serial, Prefs.MASTER_SERIAL, nsname, nsid, nsip,
                            Prefs.MASTER_IP)
 
 
@@ -173,13 +188,13 @@ def check_master(zone):
     if Prefs.MASTER:
         Prefs.MASTER_IP = get_ip(Prefs.MASTER, Prefs.AF)[0]
         Stats.COUNT_NSIP += 1
-        Prefs.MASTER_SERIAL = get_serial(zone, Prefs.MASTER, Prefs.MASTER_IP)
+        Prefs.MASTER_SERIAL, nsid = get_serial(zone, Prefs.MASTER, Prefs.MASTER_IP)
         if Prefs.MASTER_SERIAL is None:
             print('ERROR: failed to obtain master serial')
             sys.exit(3)
         Stats.SERIAL_LIST.append(Prefs.MASTER_SERIAL)
         print_info(Prefs.MASTER_SERIAL, Prefs.MASTER_SERIAL,
-                   Prefs.MASTER, Prefs.MASTER_IP, Prefs.MASTER_IP)
+                   Prefs.MASTER, nsid, Prefs.MASTER_IP, Prefs.MASTER_IP)
 
 
 def get_nsnames(zone):
@@ -212,7 +227,7 @@ def process_args(arg_vector):
     """Process command line options and arguments"""
 
     try:
-        (options, args) = getopt.getopt(arg_vector, '46ct:r:d:m:a:zn')
+        (options, args) = getopt.getopt(arg_vector, '46ct:r:d:m:a:zni')
     except getopt.GetoptError:
         usage()
 
@@ -240,6 +255,8 @@ def process_args(arg_vector):
             Prefs.MASTER = optval
         elif opt == "-a":
             Prefs.ADDITIONAL = optval.split(',')
+        elif opt == "-i":
+            Prefs.NSID = True
 
     return args[0]
 
@@ -261,6 +278,7 @@ Usage: {0} [Options] <zone>
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
+       -i          Query for, and print, each responding server's NSID string
 """.format(PROGNAME, VERSION, Prefs.TIMEOUT, Prefs.RETRIES, Prefs.ALLOWED_DRIFT))
     sys.exit(4)
 
