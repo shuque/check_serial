@@ -31,7 +31,7 @@ Sample output:
 
 ```
 $ check_serial.py
-check_serial.py version 1.1.0
+check_serial.py version 1.1.1
 Usage: check_serial.py [Options] <zone>
 
        Options:
@@ -45,6 +45,7 @@ Usage: check_serial.py [Options] <zone>
        -a ns1,..   Specify additional nameserver names/addresses to query
        -z          Set DNSSEC-OK flag in queries (doesn't authenticate yet)
        -n          Don't query advertised nameservers for the zone
+       -i          Query for, and print, each responding server's NSID string
 
 $ check_serial.py upenn.edu
      1006027704 adns1.upenn.edu. 2607:f470:1001::1:a

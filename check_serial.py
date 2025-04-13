@@ -24,7 +24,7 @@ import dns.flags
 
 
 PROGNAME = os.path.basename(sys.argv[0])
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 class Prefs:
     """Configuration Preferences"""
@@ -131,9 +131,9 @@ def print_info(serial, master_serial, nsname, nsid, nsip, masterip):
     """Print serial number info for specified zone and server"""
     if Prefs.NSID:
         if nsid:
-            nsid = "(" + nsid.decode("utf-8") + ") "
+            nsid = nsid.decode("utf-8")
         else:
-            nsid = "() "
+            nsid = ""
     else:
         nsid = ""
     if masterip:
@@ -141,11 +141,11 @@ def print_info(serial, master_serial, nsname, nsid, nsip, masterip):
             return
         drift = master_serial - serial
         if nsip == masterip:
-            print("{:15d} [{:>9s}] {} {:s}{}".format(serial, "MASTER", nsname, nsid, nsip))
+            print("{:15d} [{:>9s}] {:s} {} {}".format(serial, "MASTER", nsname, nsip, nsid))
         else:
-            print("{:15d} [{:9d}] {} {:s}{}".format(serial, drift, nsname, nsid, nsip))
+            print("{:15d} [{:9d}] {:s} {} {}".format(serial, drift, nsname, nsip, nsid))
     else:
-        print("{:15d} {} {:s}{}".format(serial, nsname, nsid, nsip))
+        print("{:15d} {:s} {} {}".format(serial, nsname, nsip, nsid))
     return
 
 
