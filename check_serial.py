@@ -104,7 +104,7 @@ def get_serial(zone, nshost, nsip):
         resp = send_query(zone, 'SOA', nsip)
     except socket.error as e_info:
         print("ERROR: {} {}: socket: {}".format(nshost, nsip, e_info))
-        return None
+        return None, None
     if resp is None:
         print("ERROR: No answer from {} {}".format(nshost, nsip))
     elif resp.rcode() != 0:
