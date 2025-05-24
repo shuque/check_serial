@@ -27,11 +27,17 @@ Pre-requisites:
 
    dnspython module ( http://www.dnspython.org/ )
 
+Installation:
+
+```
+pip3 install .
+```
+
 Sample output:
 
 ```
 $ check_serial.py
-check_serial.py version 1.1.1
+check_serial.py version 1.1.2
 Usage: check_serial.py [Options] <zone>
 
        Options:

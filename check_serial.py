@@ -23,8 +23,8 @@ import dns.rcode
 import dns.flags
 
 
+__version__ = "1.1.2"
 PROGNAME = os.path.basename(sys.argv[0])
-VERSION = "1.1.1"
 
 class Prefs:
     """Configuration Preferences"""

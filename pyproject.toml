@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "check_serial"
+dynamic = ["version"]
+license = "MIT"
+
+authors = [
+    { name = "Shumon Huque", email = "shuque@gmail.com" },
+]
+description = "Check DNS zone serial numbers"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "dnspython>=2.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/shuque/check_serial"
+Issues = "https://github.com/shuque/check_serial/issues"
+
+[tool.setuptools]
+py-modules = []
+script-files = ['check_serial.py']
+
+[tool.setuptools.dynamic]
+version = {attr = "check_serial.__version__"}
